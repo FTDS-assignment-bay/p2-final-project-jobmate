@@ -3,19 +3,25 @@ import streamlit as st
 from pymongo import MongoClient
 import PyPDF2
 import re
-# Set up OpenAI API key
-openai.api_key = "OPENAI_API_KEY"
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env
+load_dotenv()
+
+# Set up OpenAI API key from environment variables
+openai_api_key = os.getenv("OPENAI_API_KEY")
+openai.api_key = openai_api_key
+
 # MongoDB Connection
-MONGO_URI = "MONGO_URI"
-client = MongoClient(MONGO_URI)
-db = client["finpro"]
-jobs_collection = db["jobmate"]
+mongo_uri = os.getenv("MONGO_URI")
+client = MongoClient(mongo_uri)
+db_name = os.getenv("DATABASE_NAME")
+collection_name = os.getenv("COLLECTION_NAME")
+db = client[db_name]
+jobs_collection = db[collection_name]
 
 def run():
-    # st.set_page_config(page_title="JobMate")
-    # st.title("JobMate")
-    # st.write("Welcome to the JobMate application! Use this tool to find jobs based on your preferences.")
-
     # Function to query job database dynamically
     def query_jobs(role, exclude_role, skills, location, exclude_location):
         query = {"$and": []}
@@ -110,20 +116,18 @@ def run():
             return []
 
     # Streamlit UI
-    # st.set_page_config(page_title="JobMate", page_icon="🌐")
-    # st.title("🌐 JobMate")
     st.image('JobMate.png')
     st.write("")
-
     st.header("🔍 Temukan Pekerjaan Impian Anda!")
-    # st.write("Gunakan asisten chatbot kami untuk menemukan pekerjaan yang sesuai dengan preferensi Anda. Unggah CV/Resume Anda untuk hasil yang lebih akurat.")
 
     # Initialize Chat History
     if "messages" not in st.session_state:
         st.session_state["messages"] = []
 
     # File upload for resume
-    uploaded_file = st.file_uploader("Gunakan asisten chatbot kami untuk menemukan pekerjaan yang sesuai dengan preferensi Anda. Unggah CV/Resume Anda untuk hasil yang lebih akurat.", type=["pdf"])
+    uploaded_file = st.file_uploader("""Gunakan asisten chatbot kami untuk menemukan pekerjaan yang sesuai dengan preferensi Anda. 
+
+Unggah CV/Resume Anda untuk hasil yang lebih akurat.""", type=["pdf"])
     resume_skills = []
     if uploaded_file:
         st.info("Memproses resume anda...")
@@ -167,7 +171,7 @@ def run():
         st.session_state.messages.append({"role": "assistant", "content": response})
         with st.chat_message("assistant"):
             st.markdown(response)
-
+            
 
 if __name__ == '__main__':
     run()

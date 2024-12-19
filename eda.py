@@ -1,34 +1,71 @@
 # Import Libraries
 import pandas as pd
 import numpy as np
-
-
-# Visualisasi
+from pymongo import MongoClient
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.express as px
 import streamlit as st
+from dotenv import load_dotenv
+import os
+
+# Memuat environment variables dari file .env
+load_dotenv()
+
+# Fungsi untuk koneksi ke MongoDB dan mengambil data
+def load_data_from_mongodb():
+    # Ambil detail koneksi dari environment variables
+    mongo_uri = os.getenv("MONGO_URI")
+    database_name = os.getenv("DATABASE_NAME")
+    collection_name = os.getenv("COLLECTION_NAME")
+
+    # Validasi jika variabel environment tidak ditemukan
+    if not mongo_uri or not database_name or not collection_name:
+        raise ValueError("Environment variables for MongoDB are not set properly!")
+
+    # Koneksi ke MongoDB
+    client = MongoClient(mongo_uri)
+    db = client[database_name]
+    collection = db[collection_name]
+
+    # Ambil data dari koleksi
+    data_cursor = collection.find()
+    data = pd.DataFrame(data_cursor)
+
+    # Hapus kolom '_id' jika tidak diperlukan
+    if "_id" in data.columns:
+        data = data.drop("_id", axis=1)
+
+    return data
 
 def run():
     st.image('JobMate.png')
     st.markdown(
-    """
-    <h1 style="text-align: center;">Asisten Pencarian Kerja Berbasis AI</h1>
-    """,
-    unsafe_allow_html=True
-)
-    st.write('JobMate adalah asisten pencarian kerja berbasis AI yang dirancang untuk membantu pencari kerja menemukan peluang karier terbaik dengan cepat dan efisien. Dengan antarmuka yang ramah pengguna dan kemampuan pemrosesan data cerdas, **JobMate** mempersonalisasi setiap pencarian berdasarkan keterampilan, pengalaman, dan preferensi pengguna.')
-
-
-
+        """
+        <div style="text-align: center;">
+            <h1>Asisten Pencarian Kerja Berbasis AI</h1>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+    
+    st.markdown(
+        """
+        <div style="text-align: justify; text-justify: inter-word; font-size: 16px; line-height: 1.6;">
+            JobMate adalah asisten pencarian kerja berbasis AI yang dirancang untuk membantu pencari kerja menemukan peluang karier terbaik dengan cepat dan efisien. 
+            Dengan antarmuka yang ramah pengguna dan kemampuan pemrosesan data cerdas, 
+            <b>JobMate</b> mempersonalisasi setiap pencarian berdasarkan keterampilan, pengalaman, dan preferensi pengguna.
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     st.write('---')
     st.write('### Data Lowongan Pekerjaan')
-
-    data = pd.read_csv('job_data.csv')
-
-    st.dataframe(data.head(10))
+    data = load_data_from_mongodb()
     st.write('Berikut adalah Data lowongan pekerjaan terbaru yang menyajikan data terperinci yang akan digunakan untuk mendalami lebih jauh analisis ini.')
+    st.dataframe(data)
+    
     st.write('### Exploratory Data Analyst')
     st.write('#### 1. Distribusi Kategori Pekerjaan')
 
@@ -74,9 +111,6 @@ def run():
 
     # Membuat pie chart
     plt.pie(category_summary.values, labels=category_summary.index, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("Set2", len(category_summary)))
-
-    # Menambahkan judul
-    # plt.title('Distribution of Job Categories', fontsize=14)
 
     # Rotate x-axis labels jika panjang
     plt.tight_layout()

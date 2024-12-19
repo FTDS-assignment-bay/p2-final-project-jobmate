@@ -174,51 +174,47 @@ def run():
         unsafe_allow_html=True
     )
 
-    st.write('#### 2. Pekerjaan Data di Jabodetabek')
-    # Fungsi untuk mendapatkan top 5 pekerjaan di wilayah tertentu
-    def get_top_jobs_in_city(city_name, data, top_n=5):
-        city_df = data[(data['location'].str.contains(city_name, case=False, na=False)) & (data['job_category'] != "Other")]
-        top_jobs = city_df['job_category'].value_counts().head(top_n)
-        return top_jobs
+    st.write('#### 2. Pekerjaan Data di Jabotabek')
 
-    # Dapatkan top 5 pekerjaan di setiap wilayah
-    top_jobs_jakarta = get_top_jobs_in_city('jakarta', data)
-    top_jobs_bogor = get_top_jobs_in_city('bogor', data)
-    top_jobs_depok = get_top_jobs_in_city('depok', data)
-    top_jobs_tangerang = get_top_jobs_in_city('tangerang', data)
-    top_jobs_bekasi = get_top_jobs_in_city('bekasi', data)
+    # Filter hanya job_title tertentu
+    selected_jobs = ['Data Analyst', 'Data Scientist', 'Data Engineer', 'Freelance']
+    filtered_df = data[data['job_category'].isin(selected_jobs)]
 
-    fig = fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(15, 10), constrained_layout=True)
+    # Filter hanya untuk lokasi JABODETABEK
+    locations = ['Jakarta', 'Bogor','Tangerang', 'Bekasi']
+    filtered_df = filtered_df[filtered_df['location'].isin(locations)]
 
-    # Daftar kota dan data pekerjaan
-    cities_and_jobs = [
-        ('Jakarta', top_jobs_jakarta),
-        ('Bogor', top_jobs_bogor),
-        ('Depok', top_jobs_depok),
-        ('Tangerang', top_jobs_tangerang),
-        ('Bekasi', top_jobs_bekasi)
-    ]
+    # Menghitung jumlah lowongan per job_title dan lokasi
+    pivot_table = filtered_df.pivot_table(index='job_category', columns='location', aggfunc='size', fill_value=0).reset_index()
 
-    # Plot setiap top job di subplot
-    for ax, (city_name, top_jobs) in zip(axes.flatten(), cities_and_jobs):
-        sns.barplot(y=top_jobs.values, x=top_jobs.index, palette='Set2', hue=top_jobs.index, ax=ax)
-        ax.set_title(f'Lowongan Kerja di {city_name.capitalize()}', fontsize=16)
-        ax.set_xlabel('Number of Jobs', fontsize=12)
-        ax.set_ylabel('Job Title', fontsize=12)
-        ax.grid(True, linestyle = '--', color = 'grey', alpha = 0.3)
-        for p in ax.patches:
-            height = p.get_height()
-            ax.annotate(f'{int(height)}', 
-                        (p.get_x() + p.get_width() / 2., height), 
-                        fontsize=12, fontweight='bold', ha='center', va='center', 
-                        xytext=(0, 5), textcoords='offset points')
+    # Mengubah data menjadi format long (melt)
+    melted_df = pd.melt(pivot_table, id_vars='job_category', value_vars=locations, 
+                        var_name='location', value_name='count')
 
+    # Create a stacked bar chart using Matplotlib
+    fig, ax = plt.subplots(figsize=(10, 8))
 
-    # Matikan axis kosong
-    for ax in axes.flatten()[len(cities_and_jobs):]:
-        ax.axis('off')
+    # Define pastel colors
+    pastel_colors = sns.color_palette('Set2', len(selected_jobs))
+
+    # Stacked bar chart with pastel colors
+    bottom = [0] * len(locations)
+    for idx, (job, color) in enumerate(zip(selected_jobs, pastel_colors)):
+        heights = melted_df.loc[melted_df['job_category'] == job, 'count'].tolist()
+        ax.bar(locations, heights, bottom=bottom, label=job, color=color)
+        bottom = [sum(x) for x in zip(bottom, heights)]
+
+    # Add labels and title
+    ax.set_title('Jumlah Lowongan Berdasarkan Job Title dan Lokasi (JABOTABEK)', fontsize=16)
+    ax.set_xlabel('Lokasi', fontsize=14)
+    ax.set_ylabel('Jumlah Lowongan', fontsize=14)
+    ax.legend(title='Job Title', fontsize=12)
+    ax.set_xticks(range(len(locations)))
+    ax.set_xticklabels(locations)
+    plt.grid(axis='y',zorder=0,alpha=0.5)
 
     st.pyplot(fig)
+
     st.markdown(
         """
         <div style="text-align: justify;">
